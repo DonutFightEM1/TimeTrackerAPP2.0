@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - TimeTracker Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 fw-bold text-slate mb-4">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Clock In/Out Section - Moved to top -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0 fw-semibold">
+                        <i class="fas fa-map-marker-alt me-2"></i>Time Clock
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div id="location-status" class="mb-3">
+                        <div class="d-flex align-items-center text-muted">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            <span>Getting your location...</span>
+                        </div>
+                    </div>
+
+                    {% if current_entry %}
+                        {% if current_entry.is_on_break %}
+                            <div class="clock-display mb-4">
+                                <div class="text-center">
+                                    <div class="clock-time text-warning">ON BREAK</div>
+                                    <small class="text-muted">Return at {{ current_entry.break_end_time.strftime('%I:%M %p') }}</small>
+                                    <div id="break-countdown" class="mt-2" style="font-size: 1.2rem;"></div>
+                                </div>
+                            </div>
+                            
+                            <form method="POST" action="{{ url_for('main.end_break') }}" id="end-break-form">
+                                <button type="submit" class="btn btn-success btn-lg w-100 mb-3" id="end-break-btn">
+                                    <i class="fas fa-play me-2"></i>End Break
+                                </button>
+                            </form>
+                            
+                            <form method="POST" action="{{ url_for('main.clock_out') }}" id="clock-out-form">
+                                <input type="hidden" id="out-latitude" name="latitude">
+                                <input type="hidden" id="out-longitude" name="longitude">
+                                <input type="hidden" id="out-location" name="location">
+                                <button type="submit" class="btn btn-danger btn-lg w-100" id="clock-out-btn" disabled>
+                                    <i class="fas fa-sign-out-alt me-2"></i>Clock Out
+                                </button>
+                            </form>
+                        {% else %}
+                            <div class="clock-display mb-4">
+                                <div class="text-center">
+                                    <div class="clock-time" id="elapsed-time">00:00:00</div>
+                                    <small class="text-muted">Time worked</small>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    {% if not current_entry.has_taken_break %}
+                                        <form method="POST" action="{{ url_for('main.start_break') }}" id="start-break-form">
+                                            <input type="hidden" name="duration" value="30">
+                                            <button type="submit" class="btn btn-warning w-100" id="start-break-btn">
+                                                <i class="fas fa-pause me-2"></i>Break (30m)
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <button class="btn btn-secondary w-100" disabled>
+                                            <i class="fas fa-check me-2"></i>Break Taken
+                                        </button>
+                                    {% endif %}
+                                </div>
+                                <div class="col-6">
+                                    <form method="POST" action="{{ url_for('main.clock_out') }}" id="clock-out-form">
+                                        <input type="hidden" id="out-latitude" name="latitude">
+                                        <input type="hidden" id="out-longitude" name="longitude">
+                                        <input type="hidden" id="out-location" name="location">
+                                        <button type="submit" class="btn btn-danger w-100" id="clock-out-btn">
+                                            <i class="fas fa-sign-out-alt me-2"></i>Clock Out
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <form method="POST" action="{{ url_for('main.clock_in') }}" id="clock-in-form">
+                            <input type="hidden" id="in-latitude" name="latitude">
+                            <input type="hidden" id="in-longitude" name="longitude">
+                            <input type="hidden" id="in-location" name="location">
+                            <button type="submit" class="btn btn-success btn-lg w-100" id="clock-in-btn">
+                                <i class="fas fa-sign-in-alt me-2"></i>Clock In
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {% if current_entry %}
+                        <div class="mt-3 p-3 bg-light rounded">
+                            <small class="text-muted">
+                                <strong>Clocked in at:</strong> {{ current_entry.clock_in.strftime('%I:%M %p') }}<br>
+                                <strong>Location:</strong> {{ current_entry.clock_in_location }}
+                                {% if current_entry.is_on_break %}
+                                    <br><strong>Break started:</strong> {{ current_entry.break_start.strftime('%I:%M %p') }}
+                                {% endif %}
+                            </small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card status-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="status-icon bg-success">
+                            <i class="fas fa-calendar-week"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="h5 mb-1">This Week</h3>
+                            <p class="h4 mb-0 fw-bold text-slate">{{ "%.1f"|format(hours_this_week) }} hrs</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card status-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="status-icon bg-warning">
+                            <i class="fas fa-umbrella-beach"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="h5 mb-1">PTO Balance</h3>
+                            <p class="h4 mb-0 fw-bold text-slate">{{ current_user.pto_balance }} days</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card status-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="status-icon bg-info">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="h5 mb-1">Pending PTO</h3>
+                            <p class="h4 mb-0 fw-bold text-slate">{{ pending_pto }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Activity -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0 fw-semibold">
+                        <i class="fas fa-history me-2"></i>Recent Activity
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if recent_entries %}
+                        <div class="activity-list">
+                            {% for entry in recent_entries %}
+                                <div class="activity-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-semibold">{{ entry.date.strftime('%B %d, %Y') }}</div>
+                                            <small class="text-muted">
+                                                {{ entry.clock_in.strftime('%I:%M %p') }} - 
+                                                {% if entry.clock_out %}
+                                                    {{ entry.clock_out.strftime('%I:%M %p') }}
+                                                {% else %}
+                                                    <span class="text-success">Active</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        <div class="text-end">
+                                            {% if entry.clock_out %}
+                                                <span class="badge bg-light text-dark">{{ "%.2f"|format(entry.hours_worked) }} hrs</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% endif %}
+                                            {% if entry.status == 'pending' %}
+                                                <span class="badge bg-warning text-dark ms-1">Pending</span>
+                                            {% elif entry.status == 'approved' %}
+                                                <span class="badge bg-success ms-1">Approved</span>
+                                            {% elif entry.status == 'rejected' %}
+                                                <span class="badge bg-danger ms-1">Rejected</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-clock fa-3x mb-3 opacity-25"></i>
+                            <p>No time entries yet. Clock in to get started!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    {% if current_entry %}
+        {% if current_entry.is_on_break %}
+            // Break countdown timer
+            function updateBreakCountdown() {
+                const breakEndTime = new Date('{{ current_entry.break_end_time.isoformat() }}Z');
+                const now = new Date();
+                const remaining = breakEndTime - now;
+                
+                if (remaining <= 0) {
+                    document.getElementById('break-countdown').innerHTML = '<span class="text-danger">Break time is over!</span>';
+                    // Show notification
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification('TimeTracker Pro', {
+                            body: 'Your break time is over. Please clock back in!',
+                            icon: '/static/favicon.ico'
+                        });
+                    }
+                    return;
+                }
+                
+                const minutes = Math.floor(remaining / (1000 * 60));
+                const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+                
+                document.getElementById('break-countdown').innerHTML = `${minutes}:${seconds.toString().padStart(2, '0')} remaining`;
+                
+                // 5 minute warning
+                if (remaining <= 5 * 60 * 1000 && remaining > 4 * 60 * 1000) {
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification('TimeTracker Pro', {
+                            body: 'Your break ends in 5 minutes!',
+                            icon: '/static/favicon.ico'
+                        });
+                    }
+                }
+            }
+            
+            // Request notification permission
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+            
+            updateBreakCountdown();
+            setInterval(updateBreakCountdown, 1000);
+        {% else %}
+            // Update elapsed time every second (excluding break time)
+            function updateElapsedTime() {
+                const clockInTime = new Date('{{ current_entry.clock_in.isoformat() }}Z');
+                const now = new Date();
+                let elapsed = now - clockInTime;
+                
+                // Subtract any completed break time
+                {% if current_entry.break_start and current_entry.break_end %}
+                    const breakStart = new Date('{{ current_entry.break_start.isoformat() }}Z');
+                    const breakEnd = new Date('{{ current_entry.break_end.isoformat() }}Z');
+                    elapsed -= (breakEnd - breakStart);
+                {% endif %}
+                
+                const hours = Math.floor(elapsed / (1000 * 60 * 60));
+                const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
+                
+                const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                document.getElementById('elapsed-time').textContent = timeString;
+            }
+            
+            updateElapsedTime();
+            setInterval(updateElapsedTime, 1000);
+        {% endif %}
+    {% endif %}
+</script>
+{% endblock %}

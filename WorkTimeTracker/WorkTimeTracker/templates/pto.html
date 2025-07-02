@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}PTO - TimeTracker Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 fw-bold text-slate mb-4">
+                <i class="fas fa-umbrella-beach me-2"></i>Paid Time Off
+            </h1>
+        </div>
+    </div>
+
+    <!-- PTO Balance Card -->
+    <div class="row mb-4">
+        <div class="col-lg-4 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-calendar-check fa-3x text-primary mb-3"></i>
+                    <h3 class="h2 fw-bold text-slate">{{ current_user.pto_balance }}</h3>
+                    <p class="text-muted mb-0">Available PTO Days</p>
+                    <small class="text-info">UTO requests don't affect this balance</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0 fw-semibold">Request Time Off</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('main.request_pto') }}">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="start_date" class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="start_date" name="start_date" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="end_date" class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="end_date" name="end_date" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="pto_type" class="form-label">Time Off Type</label>
+                                <select class="form-select" id="pto_type" name="pto_type" required>
+                                    <option value="">Select type...</option>
+                                    <option value="pto">PTO (Paid Time Off)</option>
+                                    <option value="uto">UTO (Unpaid Time Off)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Days Requested</label>
+                                <div class="form-control bg-light" id="days-calculated">
+                                    Select dates to calculate
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reason" class="form-label">Reason (Optional)</label>
+                            <textarea class="form-control" id="reason" name="reason" rows="3" placeholder="Provide additional details about your request..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-2"></i>Submit Request
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PTO Requests -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0 fw-semibold">PTO Request History</h3>
+                </div>
+                <div class="card-body">
+                    {% if pto_requests %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Dates</th>
+                                        <th>Days</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Submitted</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for request in pto_requests %}
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold">
+                                                    {{ request.start_date.strftime('%m/%d/%Y') }}
+                                                    {% if request.start_date != request.end_date %}
+                                                        - {{ request.end_date.strftime('%m/%d/%Y') }}
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="fw-semibold">{{ request.days_requested }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark">
+                                                    {% if request.pto_type == 'pto' %}
+                                                        <i class="fas fa-umbrella-beach me-1"></i>PTO
+                                                    {% else %}
+                                                        <i class="fas fa-calendar-times me-1"></i>UTO
+                                                    {% endif %}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if request.status == 'pending' %}
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="fas fa-clock me-1"></i>Pending
+                                                    </span>
+                                                {% elif request.status == 'approved' %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check me-1"></i>Approved
+                                                    </span>
+                                                {% elif request.status == 'rejected' %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-times me-1"></i>Rejected
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">{{ request.submitted_at.strftime('%m/%d/%Y %I:%M %p') }}</small>
+                                            </td>
+                                            <td>
+                                                {% if request.reason %}
+                                                    <div class="text-truncate" style="max-width: 200px;" title="{{ request.reason }}">
+                                                        {{ request.reason }}
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">--</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-calendar-times fa-3x mb-3 opacity-25"></i>
+                            <h4>No PTO Requests</h4>
+                            <p>You haven't submitted any PTO requests yet. Use the form above to request time off.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Calculate business days when dates change
+    function calculateBusinessDays() {
+        const startDate = document.getElementById('start_date').value;
+        const endDate = document.getElementById('end_date').value;
+        
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            if (end < start) {
+                document.getElementById('days-calculated').textContent = 'End date must be after start date';
+                document.getElementById('days-calculated').className = 'form-control bg-danger text-white';
+                return;
+            }
+            
+            let businessDays = 0;
+            let currentDate = new Date(start);
+            
+            while (currentDate <= end) {
+                const dayOfWeek = currentDate.getDay();
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday (0) or Saturday (6)
+                    businessDays++;
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            document.getElementById('days-calculated').textContent = `${businessDays} business days`;
+            document.getElementById('days-calculated').className = 'form-control bg-light';
+        } else {
+            document.getElementById('days-calculated').textContent = 'Select dates to calculate';
+            document.getElementById('days-calculated').className = 'form-control bg-light';
+        }
+    }
+    
+    document.getElementById('start_date').addEventListener('change', calculateBusinessDays);
+    document.getElementById('end_date').addEventListener('change', calculateBusinessDays);
+    
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('start_date').min = today;
+    document.getElementById('end_date').min = today;
+    
+    // Update end date minimum when start date changes
+    document.getElementById('start_date').addEventListener('change', function() {
+        document.getElementById('end_date').min = this.value;
+    });
+</script>
+{% endblock %}

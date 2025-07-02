@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - TimeTracker Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 fw-bold text-slate mb-4">
+                <i class="fas fa-user-shield me-2"></i>Admin Dashboard
+            </h1>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card status-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="status-icon bg-warning">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="h5 mb-1">Pending Timecards</h3>
+                            <p class="h4 mb-0 fw-bold text-slate">{{ pending_timecards|length }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card status-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="status-icon bg-info">
+                            <i class="fas fa-umbrella-beach"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="h5 mb-1">Pending PTO</h3>
+                            <p class="h4 mb-0 fw-bold text-slate">{{ pending_pto_requests|length }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card status-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="status-icon bg-success">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="h5 mb-1">Total Employees</h3>
+                            <p class="h4 mb-0 fw-bold text-slate">{{ employees|length + managers|length}}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card status-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="status-icon bg-primary">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="h5 mb-1">Active Today</h3>
+                            <p class="h4 mb-0 fw-bold text-slate">--</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Pending Timecards -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0 fw-semibold">
+                        <i class="fas fa-clock me-2"></i>Pending Timecards
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if pending_timecards %}
+                        {% for entry in pending_timecards %}
+                            <div class="approval-item">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <div class="fw-semibold">{{ entry.user.full_name }}</div>
+                                        <small class="text-muted">{{ entry.date.strftime('%B %d, %Y') }}</small>
+                                        {% if entry.status == 'review_required' %}
+                                            <span class="badge bg-info text-white ms-2">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>No GPS
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-end">
+                                        {% if entry.clock_out %}
+                                            <span class="badge bg-light text-dark">{{ "%.2f"|format(entry.hours_worked) }} hrs</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="small text-muted mb-2">
+                                    <i class="fas fa-sign-in-alt me-1"></i>{{ entry.clock_in.strftime('%I:%M %p') }}
+                                    {% if entry.clock_out %}
+                                        <i class="fas fa-sign-out-alt ms-2 me-1"></i>{{ entry.clock_out.strftime('%I:%M %p') }}
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="small text-muted mb-3">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    <span class="text-truncate d-inline-block" style="max-width: 200px;">
+                                        {{ entry.clock_in_location }}
+                                    </span>
+                                    {% if entry.status == 'review_required' %}
+                                        <br><small class="text-warning">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>
+                                            Location data unavailable - manual review required
+                                        </small>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="btn-group btn-group-sm w-100">
+                                    <a href="{{ url_for('main.approve_timecard', entry_id=entry.id) }}" 
+                                       class="btn btn-success">
+                                        <i class="fas fa-check me-1"></i>Approve
+                                    </a>
+                                    <a href="{{ url_for('main.reject_timecard', entry_id=entry.id) }}" 
+                                       class="btn btn-danger">
+                                        <i class="fas fa-times me-1"></i>Reject
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-check-circle fa-3x mb-3 opacity-25"></i>
+                            <p>No pending timecards to review.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending PTO Requests -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0 fw-semibold">
+                        <i class="fas fa-umbrella-beach me-2"></i>Pending PTO Requests
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if pending_pto_requests %}
+                        {% for request in pending_pto_requests %}
+                            <div class="approval-item">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <div class="fw-semibold">{{ request.user.full_name }}</div>
+                                        <small class="text-muted">
+                                            Submitted {{ request.submitted_at.strftime('%m/%d/%Y') }}
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-light text-dark">{{ request.days_requested }} days</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="small mb-2">
+                                    <strong>Dates:</strong> 
+                                    {{ request.start_date.strftime('%m/%d/%Y') }}
+                                    {% if request.start_date != request.end_date %}
+                                        - {{ request.end_date.strftime('%m/%d/%Y') }}
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="small mb-2">
+                                    <strong>Type:</strong>
+                                    <span class="badge bg-secondary ms-1">
+                                        {% if request.pto_type == 'pto' %}
+                                            <i class="fas fa-umbrella-beach me-1"></i>PTO
+                                        {% else %}
+                                            <i class="fas fa-calendar-times me-1"></i>UTO
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                
+                                {% if request.reason %}
+                                    <div class="small text-muted mb-3">
+                                        <strong>Reason:</strong> {{ request.reason }}
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="small text-muted mb-3">
+                                    <strong>Employee Balance:</strong> {{ request.user.pto_balance }} days
+                                </div>
+                                
+                                <div class="btn-group btn-group-sm w-100">
+                                    <a href="{{ url_for('main.approve_pto', request_id=request.id) }}" 
+                                       class="btn btn-success">
+                                        <i class="fas fa-check me-1"></i>Approve
+                                    </a>
+                                    <a href="{{ url_for('main.reject_pto', request_id=request.id) }}" 
+                                       class="btn btn-danger">
+                                        <i class="fas fa-times me-1"></i>Reject
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-check-circle fa-3x mb-3 opacity-25"></i>
+                            <p>No pending PTO requests to review.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Directory Section -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0 fw-semibold">
+                        <i class="fas fa-users me-2"></i>Employee Directory
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Managers Section -->
+                    <div class="mb-4">
+                        <h4 class="h6 fw-bold text-primary mb-3">
+                            <i class="fas fa-user-shield me-2"></i>Managers ({{ managers|length }})
+                        </h4>
+                        {% if managers %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Username</th>
+                                            <th>Member Since</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for manager in managers %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="status-icon bg-primary me-2" style="width: 32px; height: 32px; font-size: 14px;">
+                                                        <i class="fas fa-user-shield"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-semibold">{{ manager.full_name }}</div>
+                                                        {% if manager.id == current_user.id %}
+                                                            <small class="text-primary">You</small>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>{{ manager.email }}</td>
+                                            <td>{{ manager.username }}</td>
+                                            <td>{{ manager.created_at.strftime('%B %d, %Y') }}</td>
+                                            <td>
+                                                {% if manager.id != current_user.id %}
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        <a href="{{ url_for('main.demote_user', user_id=manager.id) }}" 
+                                                           class="btn btn-outline-warning btn-sm"
+                                                           onclick="return confirm('Are you sure you want to demote {{ manager.full_name }} to employee?')">
+                                                            <i class="fas fa-arrow-down me-1"></i>Demote
+                                                        </a>
+                                                        <a href="{{ url_for('main.delete_user', user_id=manager.id) }}" 
+                                                           class="btn btn-outline-danger btn-sm"
+                                                           onclick="return confirm('Are you sure you want to delete {{ manager.full_name }}? This action cannot be undone.')">
+                                                            <i class="fas fa-trash me-1"></i>Delete
+                                                        </a>
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">Current User</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-user-shield fa-3x mb-3"></i>
+                                <p>No other managers found.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Employees Section -->
+                    <div>
+                        <h4 class="h6 fw-bold text-success mb-3">
+                            <i class="fas fa-users me-2"></i>Employees ({{ employees|length }})
+                        </h4>
+                        {% if employees %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Username</th>
+                                            <th>PTO Balance</th>
+                                            <th>Member Since</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for employee in employees %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="status-icon bg-success me-2" style="width: 32px; height: 32px; font-size: 14px;">
+                                                        <i class="fas fa-user"></i>
+                                                    </div>
+                                                    <div class="fw-semibold">{{ employee.full_name }}</div>
+                                                </div>
+                                            </td>
+                                            <td>{{ employee.email }}</td>
+                                            <td>{{ employee.username }}</td>
+                                            <td>
+                                                <span class="badge bg-light text-dark">
+                                                    {{ employee.pto_balance }} days
+                                                </span>
+                                            </td>
+                                            <td>{{ employee.created_at.strftime('%B %d, %Y') }}</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <a href="{{ url_for('main.promote_user', user_id=employee.id) }}" 
+                                                       class="btn btn-outline-primary btn-sm"
+                                                       onclick="return confirm('Are you sure you want to promote {{ employee.full_name }} to manager?')">
+                                                        <i class="fas fa-arrow-up me-1"></i>Promote
+                                                    </a>
+                                                    <a href="{{ url_for('main.delete_user', user_id=employee.id) }}" 
+                                                       class="btn btn-outline-danger btn-sm"
+                                                       onclick="return confirm('Are you sure you want to delete {{ employee.full_name }}? This action cannot be undone.')">
+                                                        <i class="fas fa-trash me-1"></i>Delete
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-users fa-3x mb-3"></i>
+                                <p>No employees found.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!--Register Employee-->
+    <div class="col-lg-8 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="h5 mb-0 fw-semibold">Register New Employee</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="first_name" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="last_name" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reg_username" class="form-label">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            <input type="text" class="form-control" id="reg_username" name="username" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reg_password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                            <input type="password" class="form-control" id="reg_password" name="password" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="confirm_password" class="form-label">Confirm Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100 py-2">
+                        <i class="fas fa-user-plus me-2"></i>Create Account
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
